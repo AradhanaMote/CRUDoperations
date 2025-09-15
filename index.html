@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Todo CRUD App</title>
+  <script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.development.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.development.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/axios@1.4.0/dist/axios.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.20.15/Babel.min.js"></script>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    function App() {
+      const [todos, setTodos] = useState([]);
+      const [newTodo, setNewTodo] = useState('');
+      const [editingId, setEditingId] = useState(null);
+      const [editText, setEditText] = useState('');
+
+      // Fetch todos
+      useEffect(() => {
+        fetchTodos();
+      }, []);
+
+      const fetchTodos = async () => {
+        try {
+          const response = await axios.get('http://localhost:3000/todos');
+          setTodos(response.data);
+        } catch (error) {
+          console.error('Error fetching todos:', error);
+        }
+      };
+
+      // Create todo
+      const addTodo = async (e) => {
+        e.preventDefault();
+        if (!newTodo.trim()) return;
+        try {
+          const response = await axios.post('http://localhost:3000/todos', {
+            title: newTodo,
+            completed: false
+          });
+          setTodos([...todos, response.data]);
+          setNewTodo('');
+        } catch (error) {
+          console.error('Error adding todo:', error);
+        }
+      };
+
+      // Update todo
+      const updateTodo = async (id) => {
+        if (!editText.trim()) return;
+        try {
+          const response = await axios.put(`http://localhost:3000/todos/${id}`, {
+            title: editText,
+            completed: todos.find(todo => todo.id === id).completed
+          });
+          setTodos(todos.map(todo => (todo.id === id ? response.data : todo)));
+          setEditingId(null);
+          setEditText('');
+        } catch (error) {
+          console.error('Error updating todo:', error);
+        }
+      };
+
+      // Delete todo
+      const deleteTodo = async (id) => {
+        try {
+          await axios.delete(`http://localhost:3000/todos/${id}`);
+          setTodos(todos.filter(todo => todo.id !== id));
+        } catch (error) {
+          console.error('Error deleting todo:', error);
+        }
+      };
+
+      // Toggle completion
+      const toggleComplete = async (id) => {
+        const todo = todos.find(todo => todo.id === id);
+        try {
+          const response = await axios.put(`http://localhost:3000/todos/${id}`, {
+            ...todo,
+            completed: !todo.completed
+          });
+          setTodos(todos.map(todo => (todo.id === id ? response.data : todo)));
+        } catch (error) {
+          console.error('Error toggling todo:', error);
+        }
+      };
+
+      return (
+        <div className="max-w-md mx-auto mt-10 p-6 bg-gray-100 rounded-lg shadow-lg">
+          <h1 className="text-2xl font-bold mb-4 text-center">Todo List</h1>
+          
+          {/* Add Todo Form */}
+          <div className="mb-4">
+            <input
+              type="text"
+              value={newTodo}
+              onChange={(e) => setNewTodo(e.target.value)}
+              placeholder="Add a new todo"
+              className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <button
+              onClick={addTodo}
+              className="mt-2 w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600"
+            >
+              Add Todo
+            </button>
+          </div>
+
+          {/* Todo List */}
+          <ul className="space-y-2">
+            {todos.map(todo => (
+              <li key={todo.id} className="flex items-center justify-between p-2 bg-white rounded shadow">
+                {editingId === todo.id ? (
+                  <div className="flex w-full space-x-2">
+                    <input
+                      type="text"
+                      value={editText}
+                      onChange={(e) => setEditText(e.target.value)}
+                      className="flex-1 p-1 border rounded"
+                    />
+                    <button
+                      onClick={() => updateTodo(todo.id)}
+                      className="bg-green-500 text-white px-2 py-1 rounded hover:bg-green-600"
+                    >
+                      Save
+                    </button>
+                    <button
+                      onClick={() => setEditingId(null)}
+                      className="bg-gray-500 text-white px-2 py-1 rounded hover:bg-gray-600"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        checked={todo.completed}
+                        onChange={() => toggleComplete(todo.id)}
+                        className="h-4 w-4"
+                      />
+                      <span className={todo.completed ? 'line-through text-gray-500' : ''}>
+                        {todo.title}
+                      </span>
+                    </div>
+                    <div className="space-x-2">
+                      <button
+                        onClick={() => {
+                          setEditingId(todo.id);
+                          setEditText(todo.title);
+                        }}
+                        className="bg-yellow-500 text-white px-2 py-1 rounded hover:bg-yellow-600"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => deleteTodo(todo.id)}
+                        className="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
